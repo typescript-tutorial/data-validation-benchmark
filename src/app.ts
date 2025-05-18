@@ -4,91 +4,9 @@ import Benchmark from "benchmark"
 import Joi from "joi"
 import { number as sNumber, object as sObject, string as sString } from "superstruct"
 import { email, maxValue, minValue, number, object, parse, pipe, string } from "valibot"
-import { Attributes, StringMap, validate } from "xvalidators"
+import { Attributes, validate } from "xvalidators"
 import * as yup from "yup"
 import { z as zod } from "zod"
-
-interface Resources {
-  [key: string]: StringMap
-}
-
-const enResource: StringMap = {
-  error_undefined: "{0} is not allowed to exist.",
-  error_exp: "{0} does not match the regular expression.",
-  error_type: "Invalid datatype. Type of {0} cannot be {1}.",
-
-  error_required: "{0} is required.",
-  error_minlength: "{0} cannot be less than {1} characters.",
-  error_maxlength: "{0} cannot be greater than {1} characters.",
-
-  error_email: "{0} is not a valid email address.",
-  error_integer: "{0} is not a valid integer.",
-  error_number: "{0} is not a valid number.",
-  error_precision: "{0} has a valid precision. Precision must be less than or equal to {1}",
-  error_scale: "{0} has a valid scale. Scale must be less than or equal to {1}",
-  error_phone: "{0} is not a valid phone number.",
-  error_fax: "{0} is not a valid fax number.",
-  error_url: "{0} is not a valid URL.",
-  error_ipv4: "{0} is not a valid ipv4.",
-  error_ipv6: "{0} is not a valid ipv6.",
-
-  error_min: "{0} must be greater than or equal to {1}.",
-  error_max: "{0} must be less than or equal to {1}.",
-  error_date: "{0} is not a valid date.",
-  error_enum: "{0} must be one of {1}.",
-
-  username: "Username",
-  date_of_birth: "Date Of Birth",
-  telephone: "Telephone",
-  email: "Email",
-  website: "Website",
-  status: "User Status",
-  credit_limit: "Credit Limit",
-}
-
-const viResource = {
-  error_undefined: "{0} không được phép tồn tại.",
-  error_exp: "{0} không khớp với biểu thức chính quy.",
-  error_type: "Kiểu dữ liệu không hợp lệ. Kiểu của {0} không thể là {1}.",
-
-  error_required: "{0} là bắt buộc.",
-  error_minlength: "{0} không được ít hơn {1} ký tự.",
-  error_maxlength: "{0} không được nhiều hơn {1} ký tự.",
-
-  error_email: "{0} không phải là địa chỉ email hợp lệ.",
-  error_integer: "{0} không phải là số nguyên hợp lệ.",
-  error_number: "{0} không phải là số hợp lệ.",
-  error_precision: "{0} có độ chính xác không hợp lệ. Độ chính xác phải nhỏ hơn hoặc bằng {1}.",
-  error_scale: "{0} có thang đo không hợp lệ. Thang đo phải nhỏ hơn hoặc bằng {1}.",
-  error_phone: "{0} không phải là số điện thoại hợp lệ.",
-  error_fax: "{0} không phải là số fax hợp lệ.",
-  error_url: "{0} không phải là URL hợp lệ.",
-  error_ipv4: "{0} không phải là địa chỉ IPv4 hợp lệ.",
-  error_ipv6: "{0} không phải là địa chỉ IPv6 hợp lệ.",
-
-  error_min: "{0} phải lớn hơn hoặc bằng {1}.",
-  error_max: "{0} phải nhỏ hơn hoặc bằng {1}.",
-  error_date: "{0} không phải là ngày hợp lệ.",
-  error_enum: "{0} phải là một trong các giá trị sau: {1}.",
-
-  username: "Tên người dùng",
-  date_of_birth: "Ngày sinh",
-  telephone: "Điện thoại",
-  email: "Địa chỉ email",
-  website: "Trang web",
-  status: "Trạng thái người dùng",
-  credit_limit: "Hạn mức tín dụng",
-}
-
-const resources: Resources = {
-  en: enResource,
-  vi: viResource,
-}
-
-function getResource(lang: string): StringMap {
-  return resources[lang] || resources["en"]
-}
-const resource = getResource("en") // or "vi" for Vietnamese
 
 // Sample data
 const data = {
@@ -222,7 +140,7 @@ function warmUp(fn: () => void, name: string) {
 }
 
 warmUp(() => ajvValidate(data), "Ajv")
-warmUp(() => validate(data, userSchema, resource, true), "xvalidators")
+warmUp(() => validate(data, userSchema, undefined, true), "xvalidators")
 warmUp(() => parse(valibotSchema, data), "Valibot")
 warmUp(() => zodSchema.parse(data), "Zod")
 warmUp(() => joiSchema.validate(data), "Joi")
@@ -243,7 +161,7 @@ suite
     ajvValidate(data)
   })
   .add("xvalidators", () => {
-    validate(data, userSchema, resource, true)
+    validate(data, userSchema, undefined, true)
   })
   .add("Valibot", () => {
     parse(valibotSchema, data)
