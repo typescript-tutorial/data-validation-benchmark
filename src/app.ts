@@ -3,10 +3,10 @@ import addFormats from "ajv-formats"
 import Benchmark from "benchmark"
 import Joi from "joi"
 import { number as sNumber, object as sObject, string as sString } from "superstruct"
-import { number as vNumber, object as vObject, parse as vParse, string as vString } from "valibot"
+import { email, maxValue, minValue, number, object, parse, pipe, string } from "valibot"
 import { Attributes, StringMap, validate } from "xvalidators"
 import * as yup from "yup"
-import { z } from "zod"
+import { z as zod } from "zod"
 
 interface Resources {
   [key: string]: StringMap
@@ -119,7 +119,7 @@ const ajvSchema: JSONSchemaType<User> = {
   type: "object",
   properties: {
     name: { type: "string" },
-    age: { type: "number" },
+    age: { type: "number", minimum: 1, maximum: 100 },
     email: { type: "string", format: "email" },
     address: {
       type: "object",
@@ -140,67 +140,47 @@ addFormats(ajv)
 const ajvValidate = ajv.compile(ajvSchema)
 
 const userSchema: Attributes = {
-  id: {
-    length: 40,
-  },
-  name: {
-    required: true,
-  },
-  age: {
-    type: "number",
-    min: 1,
-    max: 100,
-  },
-  email: {
-    format: "email",
-    required: true,
-    resource: "email",
-  },
+  name: { required: true },
+  age: { type: "number", required: true, min: 1, max: 100 },
+  email: { required: true, format: "email", resource: "email" },
   address: {
     type: "object",
     required: true,
     typeof: {
-      street: {
-        required: true,
-      },
-      city: {
-        required: true,
-      },
-      zip: {
-        required: true,
-        resource: "zip",
-      },
+      street: { required: true },
+      city: { required: true },
+      zip: { required: true, resource: "zip" },
     },
   },
 }
 
-const valibotSchema = vObject({
-  name: vString(),
-  age: vNumber(),
-  email: vString(), // Valibot doesn't have built-in email validator
-  address: vObject({
-    street: vString(),
-    city: vString(),
-    zip: vString(),
+const valibotSchema = object({
+  name: string(),
+  age: pipe(number(), minValue(1), maxValue(100)),
+  email: pipe(string(), email()), // Valibot doesn't have built-in email validator
+  address: object({
+    street: string(),
+    city: string(),
+    zip: string(),
   }),
 })
 
 // Zod schema
-const zodSchema = z.object({
-  name: z.string(),
-  age: z.number(),
-  email: z.string().email(),
-  address: z.object({
-    street: z.string(),
-    city: z.string(),
-    zip: z.string(),
+const zodSchema = zod.object({
+  name: zod.string(),
+  age: zod.number().min(1).max(100),
+  email: zod.string().email(),
+  address: zod.object({
+    street: zod.string(),
+    city: zod.string(),
+    zip: zod.string(),
   }),
 })
 
 // Joi schema
 const joiSchema = Joi.object({
   name: Joi.string().required(),
-  age: Joi.number().required(),
+  age: Joi.number().required().min(1).max(100),
   email: Joi.string().email().required(),
   address: Joi.object({
     street: Joi.string().required(),
@@ -211,7 +191,7 @@ const joiSchema = Joi.object({
 
 const yupSchema = yup.object({
   name: yup.string().required(),
-  age: yup.number().positive().integer().required(),
+  age: yup.number().required().min(1).max(100),
   email: yup.string().required(),
   address: yup
     .object({
@@ -232,6 +212,23 @@ const superstructSchema = sObject({
     zip: sString(),
   }),
 })
+
+// ────────────────────────────────────────────────────────────
+// Warm-up phase: Give V8 time to JIT optimize the functions
+// ────────────────────────────────────────────────────────────
+function warmUp(fn: () => void, name: string) {
+  for (let i = 0; i < 10000; i++) fn()
+  console.log(`Warm-up complete: ${name}`)
+}
+
+warmUp(() => ajvValidate(data), "Ajv")
+warmUp(() => validate(data, userSchema, resource, true), "xvalidators")
+warmUp(() => parse(valibotSchema, data), "Valibot")
+warmUp(() => zodSchema.parse(data), "Zod")
+warmUp(() => joiSchema.validate(data), "Joi")
+warmUp(() => yupSchema.validate(data), "Yup")
+warmUp(() => superstructSchema.create(data), "Superstruct")
+
 // Benchmark setup
 const suite = new Benchmark.Suite()
 const results: {
@@ -243,24 +240,19 @@ const results: {
 
 suite
   .add("Ajv", () => {
-    const valid = ajvValidate(data)
-    if (!valid) throw new Error("Validation error")
+    ajvValidate(data)
   })
   .add("xvalidators", () => {
-    const errors = validate(data, userSchema, resource, true)
-    if (errors.length > 0) {
-      throw new Error("Validation error")
-    }
+    validate(data, userSchema, resource, true)
   })
   .add("Valibot", () => {
-    vParse(valibotSchema, data)
+    parse(valibotSchema, data)
   })
   .add("Zod", () => {
     zodSchema.parse(data)
   })
   .add("Joi", () => {
-    const { error } = joiSchema.validate(data)
-    if (error) throw error
+    joiSchema.validate(data)
   })
   .add("Yup", () => {
     yupSchema.validate(data).then((valid) => {})
