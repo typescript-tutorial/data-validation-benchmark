@@ -15,7 +15,7 @@ npm install
 ```
 
 #### Run the Benchmark
-Once built, start the server
+Run the Benchmark with typescript directly:
 ```shell
 npx tsx ./src/app.ts
 ```
