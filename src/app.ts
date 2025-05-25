@@ -2,17 +2,17 @@ import Ajv, { JSONSchemaType } from "ajv"
 import addFormats from "ajv-formats"
 import Benchmark from "benchmark"
 import Joi from "joi"
-import { number as sNumber, object as sObject, string as sString } from "superstruct"
-import { email, maxValue, minValue, number, object, parse, pipe, string } from "valibot"
+import { email, literal, maxValue, minValue, number, object, parse, pipe, string, union } from "valibot"
 import { Attributes, validate } from "xvalidators"
 import * as yup from "yup"
-import { z as zod } from "zod"
+import { z } from "zod"
 
 // Sample data
 const data = {
   name: "John Doe",
   age: 30,
   email: "john.doe@example.com",
+  status: "D",
   address: {
     street: "123 Main St",
     city: "New York",
@@ -25,6 +25,7 @@ interface User {
   name: string
   age: number
   email: string
+  status: string
   address: {
     street: string
     city: string
@@ -39,6 +40,7 @@ const ajvSchema: JSONSchemaType<User> = {
     name: { type: "string" },
     age: { type: "number", minimum: 1, maximum: 100 },
     email: { type: "string", format: "email" },
+    status: { type: "string", enum: ["A", "I", "D", "N"] },
     address: {
       type: "object",
       properties: {
@@ -61,6 +63,7 @@ const userSchema: Attributes = {
   name: { required: true },
   age: { type: "number", required: true, min: 1, max: 100 },
   email: { required: true, format: "email", resource: "email" },
+  status: { required: true, enum: ["A", "I", "D", "N"] },
   address: {
     type: "object",
     required: true,
@@ -72,26 +75,28 @@ const userSchema: Attributes = {
   },
 }
 
+// Zod schema
+const zodSchema = z.object({
+  name: z.string(),
+  age: z.number().min(1).max(100),
+  email: z.string().email(),
+  status: z.enum(["A", "I", "D", "N"]),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+    zip: z.string(),
+  }),
+})
+
 const valibotSchema = object({
   name: string(),
   age: pipe(number(), minValue(1), maxValue(100)),
   email: pipe(string(), email()), // Valibot doesn't have built-in email validator
+  status: union([literal("A"), literal("I"), literal("D"), literal("N")]),
   address: object({
     street: string(),
     city: string(),
     zip: string(),
-  }),
-})
-
-// Zod schema
-const zodSchema = zod.object({
-  name: zod.string(),
-  age: zod.number().min(1).max(100),
-  email: zod.string().email(),
-  address: zod.object({
-    street: zod.string(),
-    city: zod.string(),
-    zip: zod.string(),
   }),
 })
 
@@ -100,6 +105,7 @@ const joiSchema = Joi.object({
   name: Joi.string().required(),
   age: Joi.number().required().min(1).max(100),
   email: Joi.string().email().required(),
+  status: Joi.string().valid("A", "I", "D", "N").required(),
   address: Joi.object({
     street: Joi.string().required(),
     city: Joi.string().required(),
@@ -111,6 +117,7 @@ const yupSchema = yup.object({
   name: yup.string().required(),
   age: yup.number().required().min(1).max(100),
   email: yup.string().required(),
+  status: yup.mixed<"A" | "I" | "D" | "N">().oneOf(["A", "I", "D", "N"]).required(),
   address: yup
     .object({
       street: yup.string().required(),
@@ -118,17 +125,6 @@ const yupSchema = yup.object({
       zip: yup.string().required(),
     })
     .required(),
-})
-
-const superstructSchema = sObject({
-  name: sString(),
-  age: sNumber(),
-  email: sString(),
-  address: sObject({
-    street: sString(),
-    city: sString(),
-    zip: sString(),
-  }),
 })
 
 // ────────────────────────────────────────────────────────────
@@ -145,7 +141,6 @@ warmUp(() => parse(valibotSchema, data), "Valibot")
 warmUp(() => zodSchema.parse(data), "Zod")
 warmUp(() => joiSchema.validate(data), "Joi")
 warmUp(() => yupSchema.validate(data), "Yup")
-warmUp(() => superstructSchema.create(data), "Superstruct")
 
 // Benchmark setup
 const suite = new Benchmark.Suite()
@@ -163,20 +158,17 @@ suite
   .add("xvalidators", () => {
     validate(data, userSchema, undefined, true)
   })
-  .add("Valibot", () => {
-    parse(valibotSchema, data)
-  })
   .add("Zod", () => {
     zodSchema.parse(data)
+  })
+  .add("Valibot", () => {
+    parse(valibotSchema, data)
   })
   .add("Joi", () => {
     joiSchema.validate(data)
   })
   .add("Yup", () => {
     yupSchema.validate(data).then((valid) => {})
-  })
-  .add("Superstruct", () => {
-    superstructSchema.create(data)
   })
   .on("cycle", (event: any) => {
     const bench = event.target
