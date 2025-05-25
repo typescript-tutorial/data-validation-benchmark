@@ -20,7 +20,7 @@ Once built, start the server
 npx tsx ./src/app.ts
 ```
 
-# Benchmark Result:
+## Benchmark Result:
 <table><thead><tr>
 <th><b>Library</b></th>
 <th><b>Ops/sec</b></th>
