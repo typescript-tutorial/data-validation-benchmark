@@ -2,7 +2,7 @@ import Ajv, { JSONSchemaType } from "ajv"
 import addFormats from "ajv-formats"
 import Benchmark from "benchmark"
 import Joi from "joi"
-import { email, literal, maxValue, minValue, number, object, parse, pipe, string, union } from "valibot"
+import { email, literal, maxValue, minValue, number, object, parse, pipe, string, union, url } from "valibot"
 import { Attributes, validate } from "xvalidators"
 import * as yup from "yup"
 import { z } from "zod"
@@ -12,6 +12,7 @@ const data = {
   name: "John Doe",
   age: 30,
   email: "john.doe@example.com",
+  url: "https://example.com",
   status: "D",
   address: {
     street: "123 Main St",
@@ -25,6 +26,7 @@ interface User {
   name: string
   age: number
   email: string
+  url: string
   status: string
   address: {
     street: string
@@ -40,6 +42,7 @@ const ajvSchema: JSONSchemaType<User> = {
     name: { type: "string" },
     age: { type: "number", minimum: 1, maximum: 100 },
     email: { type: "string", format: "email" },
+    url: { type: "string", format: "uri" },
     status: { type: "string", enum: ["A", "I", "D", "N"] },
     address: {
       type: "object",
@@ -51,7 +54,7 @@ const ajvSchema: JSONSchemaType<User> = {
       required: ["street", "city", "zip"],
     },
   },
-  required: ["name", "age", "email", "address"],
+  required: ["name", "age", "email", "url", "address"],
   additionalProperties: false,
 }
 
@@ -63,6 +66,7 @@ const userSchema: Attributes = {
   name: { required: true },
   age: { type: "number", required: true, min: 1, max: 100 },
   email: { required: true, format: "email", resource: "email" },
+  url: { required: true, format: "url", resource: "url" },
   status: { required: true, enum: ["A", "I", "D", "N"] },
   address: {
     type: "object",
@@ -80,6 +84,7 @@ const zodSchema = z.object({
   name: z.string(),
   age: z.number().min(1).max(100),
   email: z.string().email(),
+  url: z.string().url(),
   status: z.enum(["A", "I", "D", "N"]),
   address: z.object({
     street: z.string(),
@@ -92,6 +97,7 @@ const valibotSchema = object({
   name: string(),
   age: pipe(number(), minValue(1), maxValue(100)),
   email: pipe(string(), email()), // Valibot doesn't have built-in email validator
+  url: pipe(string(), url()),
   status: union([literal("A"), literal("I"), literal("D"), literal("N")]),
   address: object({
     street: string(),
@@ -105,6 +111,7 @@ const joiSchema = Joi.object({
   name: Joi.string().required(),
   age: Joi.number().required().min(1).max(100),
   email: Joi.string().email().required(),
+  url: Joi.string().uri().required(),
   status: Joi.string().valid("A", "I", "D", "N").required(),
   address: Joi.object({
     street: Joi.string().required(),
@@ -117,6 +124,7 @@ const yupSchema = yup.object({
   name: yup.string().required(),
   age: yup.number().required().min(1).max(100),
   email: yup.string().required(),
+  url: yup.string().url().required(),
   status: yup.mixed<"A" | "I" | "D" | "N">().oneOf(["A", "I", "D", "N"]).required(),
   address: yup
     .object({
