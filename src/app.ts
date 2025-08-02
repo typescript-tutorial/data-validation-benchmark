@@ -110,8 +110,8 @@ const valibotSchema = object({
 const joiSchema = Joi.object({
   name: Joi.string().required(),
   age: Joi.number().required().min(1).max(100),
-  email: Joi.string().email().required(),
-  url: Joi.string().uri().required(),
+  email: Joi.string().required().email(),
+  url: Joi.string().required().uri(),
   status: Joi.string().valid("A", "I", "D", "N").required(),
   address: Joi.object({
     street: Joi.string().required(),
@@ -123,8 +123,8 @@ const joiSchema = Joi.object({
 const yupSchema = yup.object({
   name: yup.string().required(),
   age: yup.number().required().min(1).max(100),
-  email: yup.string().required(),
-  url: yup.string().url().required(),
+  email: yup.string().required().email(),
+  url: yup.string().required().url(),
   status: yup.mixed<"A" | "I" | "D" | "N">().oneOf(["A", "I", "D", "N"]).required(),
   address: yup
     .object({
