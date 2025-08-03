@@ -16,7 +16,7 @@
     "benchmark": "^2.1.4",
     "joi": "^17.13.3",
     "valibot": "^1.1.0",
-    "xvalidators": "^0.5.12",
+    "xvalidators": "^0.5.14",
     "yup": "^1.6.1",
     "zod": "^3.24.4"
   },
